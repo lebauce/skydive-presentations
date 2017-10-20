@@ -1,6 +1,9 @@
 import urllib2
 import time
 import json
+import threading
+from SimpleHTTPServer import SimpleHTTPRequestHandler
+from BaseHTTPServer import HTTPServer
 from selenium import webdriver
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.keys import Keys
@@ -15,8 +18,10 @@ class DedeChapterManager:
         self.chapterID = chapterID
 
     def __enter__(self):
+        print "entering chapter", self.chapterID
         self.prevChapterID = self.dede.chapterID
         self.dede.chapterID = self.chapterID
+        return self.dede
 
     def __exit__(self, type, value, traceback):
         self.dede.chapterID = self.prevChapterID
@@ -31,12 +36,13 @@ class DedeSectionManager:
     def __enter__(self):
         self.prevSectionID = self.dede.sectionID
         self.dede.sectionID = self.sectionID
+        return self.dede
 
     def __exit__(self, type, value, traceback):
         self.dede.sectionID = self.prevSectionID
 
 
-class Dede:
+class Dede(object):
 
     def __init__(self, endpoint, driver, sessionID):
         self.endpoint = endpoint
@@ -45,8 +51,14 @@ class Dede:
         self.chapterID = ''
         self.sectionID = ''
 
+    def next_cut(self, duration):
+        time.sleep(duration)
+
     def fake_mouse(self):
         return DedeFakeMouse(self)
+
+    def keyboard_grab(self):
+        return DedeKeyboardGrab(self)
 
     def terminal_manager(self):
         return DedeTerminalManager(self)
@@ -93,14 +105,63 @@ class DedeFakeMouse:
         self._fake_mouse_move_on(el)
 
 
-class DedeTerminalManagerTab:
+class DedeKeyboardGrab:
 
-    def __init__(self, dede, window_handle):
+    def __init__(self, dede):
         self.dede = dede
-        self.window_handle = window_handle
+
+    def install(self):
+        # TODO catch error
+        print("%s/keyboard-grab/install" % self.dede.endpoint)
+        script = urllib2.urlopen(
+            "%s/keyboard-grab/install" % self.dede.endpoint).read()
+        self.dede.driver.execute_script(script)
+
+    def show(self, state):
+        self.dede.driver.execute_script("DedeKeyboardGrab.showIcon(%s)" % str(state).lower())
+
+
+class DedeTab:
+
+    def __init__(self, dede, handle, close=False):
+        self.dede = dede
+        if not handle:
+            self.dede.driver.execute_script("window.open('')")
+            handle = self.dede.driver.window_handles[-1]
+        self.window_handle = handle
+        self.prevous_window_handle = self.dede.driver.current_window_handle
+        self.close = close
+
+    def __enter__(self):
+        self.focus()
+        return self
+
+    def __exit__(self, type, value, traceback):
+        if self.close:
+            self.dede.driver.close()
+        self.dede.driver.switch_to_window(self.prevous_window_handle)
 
     def focus(self):
         self.dede.driver.switch_to_window(self.window_handle)
+
+
+class DedeIframe:
+
+    def __init__(self, dede, iframe):
+        self.driver = dede.driver
+        self.iframe = iframe
+
+    def __enter__(self):
+        self.driver.switch_to_frame(self.driver.find_element_by_id(self.iframe))
+
+    def __exit__(self, type, value, traceback):
+        self.driver.switch_to_default_content()
+
+
+class DedeTerminal:
+
+    def __init__(self, dede):
+        self.dede = dede
 
     def start_record(self):
         self.dede.driver.execute_script(
@@ -124,25 +185,38 @@ class DedeTerminalManagerTab:
             "arguments[0], arguments[1], arguments[2])", str, regex)
 
 
+class DedeTerminalTab(DedeTab, DedeTerminal):
+
+    def __init__(self, dede, handle, close=False):
+        DedeTab.__init__(self, dede, handle, close=close)
+        DedeTerminal.__init__(self, dede)
+
+
 class DedeTerminalManager:
 
     def __init__(self, dede):
         self.dede = dede
         self.termIndex = 1
+        self.tabs = {}
 
     def open_terminal_tab(
-            self, title, width=1400, cols=2000, rows=40, delay=70):
-        self.dede.driver.execute_script(
-            "window.open('%s/terminal/%s?"
-            "title=%s&width=%d&cols=%d&rows=%d&delay=%d')" %
-            (self.dede.endpoint, self.termIndex,
-             title, width, cols, rows, delay))
-        self.termIndex += 1
+            self, title, width=1400, cols=2000, rows=40, delay=70,
+            close=False, keyboard_grab=False):
+        if self.tabs.has_key(title):
+            tab = self.tabs[title]
+        else:
+            self.dede.driver.execute_script(
+                "window.open('%s/terminal/%s?"
+                "title=%s&width=%d&cols=%d&rows=%d&delay=%d')" %
+                (self.dede.endpoint, self.termIndex,
+                 title, width, cols, rows, delay))
+            self.termIndex += 1
 
-        window_handle = self.dede.driver.window_handles[-1]
-        tab = DedeTerminalManagerTab(self.dede, window_handle)
-        self.dede.driver.switch_to_window(window_handle)
+            window_handle = self.dede.driver.window_handles[-1]
+            tab = DedeTerminalTab(self.dede, window_handle, close=close)
+            self.tabs[title] = tab
 
+        tab.focus()
         return tab
 
 
@@ -181,7 +255,7 @@ class SkydiveSelenium:
         self.fake_mouse = fake_mouse
 
     def click_on_node_by_id(self, id, retry=5):
-        el = driver.find_element_by_id("node-img-%s" % id)
+        el = self.driver.find_element_by_id("node-img-%s" % id)
 
         for i in range(0, retry):
             try:
@@ -194,7 +268,7 @@ class SkydiveSelenium:
         self.click_on_node_by_id(self.client.get_node_id(gremlin))
 
     def expand(self, id):
-        el = driver.find_element_by_id("node-img-%s" % id)
+        el = self.driver.find_element_by_id("node-img-%s" % id)
         try:
             self.fake_mouse.double_click_on(el)
         except:
@@ -205,7 +279,7 @@ class SkydiveSelenium:
         self.click_on_node_by_id(id)
         while not expanded:
             try:
-                el = driver.find_element_by_id("node-img-%s" % id)
+                el = self.driver.find_element_by_id("node-img-%s" % id)
                 chain = ActionChains(self.driver)
                 chain.key_down(Keys.ALT)
                 chain.move_to_element(el)
@@ -225,7 +299,7 @@ class SkydiveSelenium:
         self.click_on_node_by_id(id)
         while not pin:
             try:
-                el = driver.find_element_by_id("node-img-%s" % id)
+                el = self.driver.find_element_by_id("node-img-%s" % id)
                 chain = ActionChains(self.driver)
                 chain.key_down(Keys.SHIFT)
                 chain.move_to_element(el)
@@ -247,6 +321,84 @@ class SkydiveSelenium:
     def scroll_up_right_panel(self):
         self.driver.execute_script(
             "$('#right-panel').animate({scrollTop: 0}, -500);")
+
+
+class DedeImpress(object):
+
+    PREV_KEY = 37
+    NEXT_KEY = 39
+    PREV_ESC = 27
+
+    def __init__(self, dede, slide_count):
+        self.dede = dede
+        self.driver = dede.driver
+        self.current_slide = 1
+        self.max_slide = 1
+        self.slide_count = slide_count
+        self.start_server()
+
+    def start_server(self):
+        # Create Simple HTTP Server for presentation and assets
+        server = HTTPServer(('', 8000), SimpleHTTPRequestHandler)
+        thread = threading.Thread(target = server.serve_forever)
+        thread.daemon = True
+        thread.start()
+        self.driver.get("http://localhost:8000")
+
+    def next_slide(self):
+        self.driver.execute_script("var api = impress(); api.next();")
+        self.current_slide = self.current_slide % self.slide_count + 1
+        self.max_slide = max(self.current_slide, self.max_slide)
+
+    def prev_slide(self):
+        self.driver.execute_script("var api = impress(); api.prev();")
+        self.current_slide = (self.current_slide - 2) % self.slide_count + 1
+        self.max_slide = max(self.current_slide, self.max_slide)
+
+    def goto_slide(self, slide):
+        self.driver.execute_script("var api = impress(); api.goto(%d);" % (slide - 1,))
+        self.current_slide = max(self.slide_count, slide)
+        self.max_slide = max(self.current_slide, self.max_slide)
+
+    def wait_for_keypress(self):
+        while True:
+            try:
+                return self.driver.execute_async_script("DedeKeyboardGrab.waitForKeyPress(arguments[0])")
+            except Exception, e:
+                # Handle timeouts
+                print "Exception", e
+
+    def on_slide(self, slide):
+        pass
+
+    def get_current_slide(self):
+        return self.driver.current_url.split('#')[-1].split('/')[-1]
+
+    def run(self):
+        self.on_slide(self.get_current_slide())
+
+        try:
+            while True:
+                print "waiting for keypress"
+                key = self.wait_for_keypress()
+                if key == DedeImpress.NEXT_KEY:
+                    self.next_slide()
+                    time.sleep(1)
+                elif key == DedeImpress.PREV_KEY:
+                    self.prev_slide()
+                    time.sleep(1)
+                elif key == DedeImpress.PREV_ESC:
+                    return True
+                else:
+                    continue
+
+                self.on_slide(self.get_current_slide())
+
+        finally:
+            print "Exiting presentation !"
+            self.driver.execute_script(
+                "DedeKeyboardGrab.ungrab();")
+
 
 
 class SkydiveClient:
@@ -279,14 +431,14 @@ if __name__ == '__main__':
 
     #driver.maximize_window()
     driver.get("http://192.168.50.10:8082")
-    driver.set_script_timeout(20)
+    driver.set_script_timeout(30)
 
     window_handle = driver.window_handles[-1]
 
     time.sleep(2)
 
     # install fake mouse on the WebUI
-    dede = Dede("http://localhost:55555", driver, 1)
+    dede = Dede("http://localhost:11664", driver, 1)
     fake_mouse = dede.fake_mouse()
     fake_mouse.install()
 
@@ -328,7 +480,7 @@ if __name__ == '__main__':
 
         # click to be sure
         skydive_sel.click_on_node_by_gremlin(
-            "G.V().Has('Name', 'agent2').Out().Has('Name', 'eth1')")
+            "G.V().Has('Name', 'agent1').Out().Has('Name', 'eth1')")
 
         # select metadata
         fake_mouse.click_on(driver.find_element_by_xpath(".//h1[text()='metadatas']"))
@@ -365,8 +517,6 @@ if __name__ == '__main__':
             tab1.type_cmd_wait("sudo ip tuntap add dev tap-demo mode tap", "vagrant")
             time.sleep(1)
 
-            driver.switch_to_window(window_handle)
-            time.sleep(1)
 
             # zoom-fit
             fake_mouse.click_on(driver.find_element_by_id('zoom-fit'))

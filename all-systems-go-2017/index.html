@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1280" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>Skydive | All Systems Go 2017 - Berlin</title>
+
+    <meta name="description" content="Slides for the Skydive presentation at All Systems Go 2017" />
+    <meta name="author" content="Sylvain Baubeau" />
+
+    <!-- <link href="http://fonts.googleapis.com/css?family=Open+Sans:regular,semibold,italic,italicsemibold|PT+Sans:400,700,400italic,700italic|PT+Serif:400,700,400italic,700italic" rel="stylesheet" /> -->
+
+    <link href="css/impress.css" rel="stylesheet" />
+
+    <link rel="shortcut icon" href="favicon.png" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+
+    <!-- Dede imports -->
+    <link rel="stylesheet" href="http://localhost:11664/statics/css/vendor/xterm.css" />
+    <link rel="stylesheet" href="http://localhost:11664/statics/css/vendor/fullscreen.css" />
+    <link rel="stylesheet" href="http://localhost:11664/statics/css/vendor/bootstrap.min.css" />
+    <link rel="stylesheet" href="http://localhost:11664/statics/css/vendor/bootstrap-toggle.min.css" />
+    <link rel="stylesheet" href="http://localhost:11664/statics/css/terminal.css" />
+
+    <script src="http://localhost:11664/statics/js/vendor/jquery.3.2.1.min.js"></script>
+    <script src="http://localhost:11664/statics/js/vendor/notify.0.4.2.min.js"></script>
+    <script src="http://localhost:11664/statics/js/vendor/xterm.js"></script>
+    <script src="http://localhost:11664/statics/js/vendor/fit.js"></script>
+    <script src="http://localhost:11664/statics/js/vendor/attach.js"></script>
+    <script src="http://localhost:11664/statics/js/vendor/fullscreen.js"></script>
+    <script src="http://localhost:11664/statics/js/vendor/bootstrap-toggle.2.2.2.min.js"></script>
+    <script src="http://localhost:11664/statics/js/terminal.js"></script>
+
+    <!-- <script src='https://code.responsivevoice.org/responsivevoice.js'></script> -->
+</head>
+
+<body class="impress-not-supported">
+
+<div class="fallback-message">
+    <p>Your browser <b>doesn't support the features required</b> by impress.js, so you are presented with a simplified version of this presentation.</p>
+    <p>For the best experience please use the latest <b>Chrome</b>, or <b>Firefox (but not Safari as it's lame)</b> browser.</p>
+</div>
+
+<div id="impress">
+
+    <div id="title" class="step" data-x="-1000" data-y="-1500">
+        <h1>Skydive</h1>
+        <h2>A real-time network topology and protocols analyzer</h2>
+    </div>
+
+    <div id="why" class="step slide" data-x="0" data-y="-1500">
+        <h1>Why Skydive ?</h1>
+        <ul>
+            <li>Troubleshooting the network is <strong>hard</strong></li>
+            <li>Toolbox:
+              <ul>
+                <li>iproute2: ip addr, ip netns, ip bridge, ip neigh, ...</li>
+                <li>ovs-vsctl, ovs-ofctl, ovsdb-client, ...</li>
+                <li>tcpdump, wireshark</li>
+              </ul>
+            </li>
+        </ul>
+    </div>
+
+    <div id="goals" class="step slide" data-x="1000" data-y="-1500">
+        <h1>Goals</h1>
+        <ul>
+          <li>SDN agnostic</li>
+          <li>Real-time / post-mortem network analysis framework</li>
+          <li>Lightweight, easy to deploy</li>
+        </ul>
+    </div>
+
+    <div class="step slide" data-x="2000" data-y="-1500">
+        <h1>Overview</h1>
+        <ul>
+          <li>Distributed</li>
+          <li>One binary to rule them all</li>
+          <li>Agent
+            <ul>
+              <li>Capture topology and flows</li>
+              <li>Forwards to the analyzers</li>
+            </ul>
+          </li>
+          <li>Analyzers
+            <ul>
+              <li>Aggregate and store topology and flows</li>
+              <li>Serve API</li>
+            </ul>
+          </li>
+        </ul>
+    </div>
+
+    <div id="demo1" class="step slide" data-x="3000" data-y="-1500">
+        <h1>A quick overview</h1>
+        <ul>
+            <li>1 Skydive analyzer (with Elasticsearch)</li>
+            <li>2 hosts (with the agent)</li>
+          </li>
+        </ul>
+
+        <!--
+        Graph
+        -->
+    </div>
+
+    <div id="demo2" class="step slide" data-x="4000" data-y="-1500">
+        <q>Let's create some network objects</q>
+    </div>
+
+    <div id="demo3" class="step slide" data-x="5000" data-y="-1500">
+        <q>Let's generate and capture some packets</q>
+        <!--
+        Capture sur eth1
+        Inject a simple ping
+        Open it with Wireshark
+        -->
+    </div>
+
+    <div id="demo4" class="step slide" data-x="6000" data-y="-1500">
+        <q>A simple Docker container</q>
+    </div>
+
+    <div class="step slide" data-x="7000" data-y="-1500">
+        <h1>Other connectors</h1>
+        <ul>
+          <li>OpenStack Neutron</li>
+          <li>OpenContrail</li>
+          <li>Kubernetes</li>
+        </ul>
+    </div>
+
+    <div id="demo5" class="step slide" data-x="8000" data-y="-1500">
+        <h1>n-tier application</h1>
+        <ul>
+          <li>Wordpress</li>
+          <li>MySQL</li>
+          <li>Orchestrated by Docker Swarm</li>
+        </ul>
+        <!--
+        Show the containers
+        Quick overview on how Docker Swarm implements the overlay network
+        -->
+    </div>
+
+    <div id="demo6" class="step slide" data-x="9000" data-y="-1500">
+        <q>Let's capture some more packets</q>
+        <!--
+        On a single node
+        Show flows 3306
+        -->
+    </div>
+
+    <div id="demo7" class="step slide" data-x="10000" data-y="-1500">
+        <q>An other Wordpress container ?</q>
+        <!--
+        We start the second container
+        We create capture:
+          - on the physical interface
+          - on the VXLAN interface
+        Generate some traffic
+        Show both encapsulated and non encapsulated flows
+        -->
+    </div>
+
+    <!-- Demo -->
+
+    <div class="step slide" data-x="11000" data-y="-1500">
+        <h1>REST API:</h1>
+        <ul>
+          <li>Query topology</li>
+          <li>Query flows</li>
+          <li>Traffic capture</li>
+          <li>Packet injection</li>
+          <li>Alerting</li>
+        </ul>
+    </div>
+
+    <!-- Demo -->
+
+    <div id="demo8" class="step slide" data-x="12000" data-y="-1500">
+        <q>Alerting</q>
+        <ul>
+          <li>Ensure that we always at least 2 Wordpress containers</li>
+        </ul>
+    </div>
+
+    <!-- Demo -->
+
+    <div id="demo9" class="step slide" data-x="13000" data-y="-1500">
+        <q>Some time travelling</q>
+    </div>
+
+    <div class="step slide" data-x="14000" data-y="-1500">
+        <ul>
+          <li>Roadmap
+          <ul>
+            <li>eBPF, DPDK, Layer 3 topology</li>
+          </ul>
+        </li>
+        <li>Apache License</li>
+        <li>Written in Go</li>
+        <li>IRC : #skydive-project @ freenode.net</li>
+        <li>Mailing list : skydive-dev@redhat.com</li>
+      </ul>
+    </div>
+
+    <!--
+
+    <div id="webui" class="step" data-x="-1500" data-y="0">
+      <iframe id="skydive-webui" src="http://192.168.50.10:8082" width="1600px" height="900px" style="margin-left: -50%">
+      </iframe>
+    </div>
+
+    <div id="terminal" class="step slide" data-x="0" data-y="0">
+
+      <div class="container dede-terminal-container">
+        <div id="dede-terminal"></div>
+      <div>
+      <script>
+        $("#dede-terminal").width(720);
+        $("#dede-terminal").height(400);
+        DedeTerminal = new _DedeTerminal({
+          id: 1,
+          cols: 80,
+          rows: 50,
+          delay: 1,
+          location: "localhost:11664",
+          create: true,
+        });
+      </script>
+
+    </div>
+    -->
+
+</div>
+
+<div class="hint">
+    <p>Use a spacebar or arrow keys to navigate</p>
+</div>
+<script>
+if ("ontouchstart" in document.documentElement) {
+    document.querySelector(".hint").innerHTML = "<p>Tap on the left or right to navigate</p>";
+}
+</script>
+<script src="js/impress.js"></script>
+<script>impress().init();</script>
+
+</body>
+</html>
